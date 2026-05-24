@@ -37,10 +37,11 @@ The intercepted login request was forwarded to Burp Suite **Repeater** to allow 
 
 To exploit improper input sanitization in the database query handling, the `email` field string value was modified into a classic tautology injection sequence (`' OR 1=1 --`), while the password field was supplied with an arbitrary value (`x`).
 
-![SQL Injection Verification Request](Assets/04-Session-hijacking.png)
+![SQL Injection Verification Request](Assets/03-Injection-Bypass-Response.png)
 
 #### 🔍 Underlying Vulnerability Mechanics
 The backend application code handles input processing unsafely, likely constructing raw database syntax strings dynamically like this:
 
+![SQL Injection Verification Request](Assets/04-Session-hijacking.png)
 ```sql
 SELECT * FROM Users WHERE email = '$USER_INPUT' AND password = '$PASSWORD_INPUT';
