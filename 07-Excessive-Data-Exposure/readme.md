@@ -1,4 +1,4 @@
-# 🔓 API7:2023 — Excessive Data Exposure
+#  Excessive Data Exposure
 ### crAPI Penetration Testing | OWASP API Security Top 10
 
 ---
